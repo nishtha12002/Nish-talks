@@ -276,16 +276,6 @@
 <div class="wrap">
 
   <div class="eyebrow">Step 1 of 3</div>
-  <h1>Pick your slot</h1>
-  <p class="sub">Book directly on my calendar — this locks the slot in real time so no one else can grab it.</p>
-
-  <div class="pay-box">
-    <div class="pay-amount" style="font-size:22px;">NZ Student Consult</div>
-    <div class="pay-label">40 minutes · pick a time that works for you</div>
-    <a id="calendlyBtn" class="pay-btn" href="https://calendly.com/nishtha-12chaudhary/30min" target="_blank">Book on Calendly</a>
-  </div>
-
-  <div class="eyebrow" style="margin-top:36px;">Step 2 of 3</div>
   <h1>Pay to book</h1>
   <p class="sub">Scan the QR or tap the button to pay via any UPI app (GPay, Paytm, PhonePe).</p>
 
@@ -297,7 +287,30 @@
     <div class="upi-id">UPI ID: <span id="upiIdText"></span></div>
   </div>
 
+  <div class="eyebrow" style="margin-top:36px;">Step 2 of 3</div>
+  <h1>Confirm your payment</h1>
+  <p class="sub">After paying, enter the UPI transaction / reference ID from your payment app (found in the payment success screen or your UPI app's history) to unlock booking.</p>
+
+  <div class="pay-box">
+    <div class="field" style="text-align:left;">
+      <label for="txnId">UPI transaction / reference ID <span class="req">*</span></label>
+      <input type="text" id="txnId" placeholder="e.g. 402812345678">
+    </div>
+    <button type="button" id="unlockBtn" class="pay-btn" style="border:none;margin-top:12px;cursor:pointer;">Unlock booking</button>
+    <div id="unlockNote" style="font-size:12.5px;color:#8a9490;margin-top:10px;"></div>
+  </div>
+
   <div class="eyebrow" style="margin-top:36px;">Step 3 of 3</div>
+  <h1>Pick your slot</h1>
+  <p class="sub" id="slotSubtext">Pay and confirm your transaction ID above first — the button below unlocks once that's done.</p>
+
+  <div class="pay-box">
+    <div class="pay-amount" style="font-size:22px;">NZ Student Consult</div>
+    <div class="pay-label">40 minutes · pick a time that works for you</div>
+    <a id="calendlyBtn" class="pay-btn" href="https://calendly.com/nishtha-12chaudhary/30min" target="_blank" style="pointer-events:none;opacity:.4;">🔒 Book on Calendly</a>
+  </div>
+
+  <div class="eyebrow" style="margin-top:36px;">Last step</div>
   <h1>Tell me about you</h1>
   <p class="sub">This means I walk into our call already knowing what you need, instead of spending the first 10 minutes catching up.</p>
 
@@ -380,9 +393,40 @@
   const AMOUNT = "799"; // <-- change price here (in INR, no symbol)
 
   // Booking is now handled by Calendly (see the "Book on Calendly" button above),
-  // which locks slots for real. No custom slot logic needed here.
+  // which locks slots for real. A transaction ID gate below adds friction so
+  // people confirm payment before they can reach the booking button.
 
   document.getElementById('payAmount').textContent = `₹${AMOUNT}`;
+
+  let paymentConfirmed = false;
+  let enteredTxnId = "";
+
+  document.getElementById('unlockBtn').addEventListener('click', function(){
+    const txnId = document.getElementById('txnId').value.trim();
+    const note = document.getElementById('unlockNote');
+
+    if(!txnId || txnId.length < 4){
+      note.textContent = "Please enter a valid transaction ID from your UPI app.";
+      note.style.color = "#c0392b";
+      return;
+    }
+
+    enteredTxnId = txnId;
+    paymentConfirmed = true;
+
+    const calendlyBtn = document.getElementById('calendlyBtn');
+    calendlyBtn.style.pointerEvents = "auto";
+    calendlyBtn.style.opacity = "1";
+    calendlyBtn.textContent = "Book on Calendly";
+
+    document.getElementById('slotSubtext').textContent = "Unlocked — pick a time that works for you.";
+    note.textContent = "✅ Unlocked. Go ahead and book your slot below.";
+    note.style.color = "#1f5c4a";
+
+    this.textContent = "Unlocked ✓";
+    this.disabled = true;
+    this.style.opacity = "0.6";
+  });
   document.getElementById('upiIdText').textContent = UPI_ID;
 
   const upiUrl = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${AMOUNT}&cu=INR&tn=${encodeURIComponent('NZ Consult Booking')}`;
@@ -441,6 +485,10 @@
       alert("Please confirm you understand this is not immigration advice.");
       return;
     }
+    if(!paymentConfirmed){
+      alert("Please confirm your payment (Step 2) before submitting.");
+      return;
+    }
 
     let msg = `Hi! I've booked a NZ consult.\n\n`;
     msg += `Name: ${name}\n`;
@@ -449,7 +497,7 @@
     msg += `Stage: ${stage}\n`;
     msg += `Topic: ${topic}\n`;
     if(details) msg += `Details: ${details}\n`;
-    msg += `Payment: ₹${AMOUNT} via UPI\n`;
+    msg += `Payment: ₹${AMOUNT} via UPI (txn ID: ${enteredTxnId})\n`;
     msg += `(Booked my slot on Calendly separately)\n`;
 
     const encoded = encodeURIComponent(msg);
